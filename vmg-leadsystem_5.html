@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>VMG Akquise-System</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VMG Leads">
+<meta name="theme-color" content="#0F1826">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230F1826'/%3E%3Ctext x='50' y='64' font-family='Arial' font-size='44' font-weight='700' fill='%23C9A227' text-anchor='middle'%3EVM%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --navy:#0F1826;
+    --navy-2:#182236;
+    --off:#ECEEF1;
+    --off-2:#F7F8FA;
+    --gold:#C9A227;
+    --gold-soft:#E4CC7A;
+    --ink:#141B24;
+    --ink-soft:#5B6674;
+    --line:#DADFE5;
+    --red:#B4402A;
+    --amber:#C9821F;
+    --blue:#2C5C8A;
+    --green:#3F7A52;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--off);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;}
+  ::selection{background:var(--gold-soft);}
+  .app{display:flex;min-height:100vh;}
+
+  /* ---- Sidebar ---- */
+  .sidebar{width:220px;background:var(--navy);color:var(--off);flex-shrink:0;display:flex;flex-direction:column;padding:24px 0;position:sticky;top:0;height:100vh;}
+  .brand{padding:0 22px 22px 22px;border-bottom:1px solid rgba(255,255,255,0.08);}
+  .brand-mark{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.02em;}
+  .brand-mark span{color:var(--gold);}
+  .brand-sub{font-size:11px;color:rgba(236,238,241,0.5);margin-top:4px;letter-spacing:0.04em;text-transform:uppercase;}
+  .nav{padding:18px 12px;display:flex;flex-direction:column;gap:2px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;color:rgba(236,238,241,0.75);font-size:13.5px;font-weight:500;transition:background .15s;}
+  .nav-item:hover{background:rgba(255,255,255,0.06);}
+  .nav-item.active{background:rgba(201,162,39,0.14);color:var(--gold-soft);}
+  .nav-num{font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.6;width:16px;}
+  .sidebar-foot{margin-top:auto;padding:16px 22px;font-size:11px;color:rgba(236,238,241,0.35);}
+
+  /* ---- Main ---- */
+  .main{flex:1;padding:32px 40px;min-width:0;}
+  .page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;flex-wrap:wrap;gap:14px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:26px;margin:0 0 4px 0;letter-spacing:-0.01em;}
+  .page-sub{color:var(--ink-soft);font-size:13.5px;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .btn{border:none;border-radius:8px;padding:10px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:transform .1s, opacity .15s;}
+  .btn:active{transform:scale(0.97);}
+  .btn-gold{background:var(--gold);color:var(--navy);}
+  .btn-gold:hover{opacity:0.88;}
+  .btn-outline{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn-outline:hover{border-color:var(--navy);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);font-weight:500;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+
+  /* ---- Stat cards ---- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:28px;}
+  .stat-card{background:var(--off-2);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;}
+  .stat-num{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--navy);}
+  .stat-label{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .stat-card.accent{border-color:var(--gold);background:linear-gradient(180deg,#FBF7EA,var(--off-2));}
+  .stat-card.accent .stat-num{color:var(--gold);}
+
+  /* ---- Info banner ---- */
+  .info-card{background:var(--navy);color:var(--off);border-radius:var(--radius);padding:20px 24px;margin-bottom:28px;}
+  .info-card h3{font-family:'Space Grotesk',sans-serif;margin:0 0 8px 0;font-size:15px;color:var(--gold-soft);}
+  .info-card p{margin:0 0 10px 0;font-size:13px;line-height:1.6;color:rgba(236,238,241,0.85);}
+  .info-card ul{margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:rgba(236,238,241,0.85);}
+
+  /* ---- Table ---- */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+  .search{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;}
+  select{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink);}
+  .table-wrap{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:960px;}
+  th{text-align:left;padding:11px 14px;background:var(--off-2);color:var(--ink-soft);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:0.03em;border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  td.nowrap, th.nowrap{white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:#FAFAF9;}
+  .company-name{font-weight:600;}
+  .company-city{font-size:11.5px;color:var(--ink-soft);max-width:260px;}
+  a.link{color:var(--blue);text-decoration:none;}
+  a.link:hover{text-decoration:underline;}
+  .muted{color:var(--ink-soft);}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-none{background:#FBE7E2;color:var(--red);}
+  .badge-outdated{background:#FCEFDA;color:var(--amber);}
+  .badge-startup{background:#E4EEF7;color:var(--blue);}
+  .badge-good{background:#E5F1E8;color:var(--green);}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+  .score-ring{display:inline-flex;align-items:center;gap:6px;}
+  .score-num{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:12.5px;}
+
+  .status-pill{padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:600;border:1px solid var(--line);background:#fff;font-family:'Inter',sans-serif;cursor:pointer;}
+
+  .row-actions{display:flex;gap:8px;}
+  .icon-btn{background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:15px;padding:2px 4px;}
+  .icon-btn:hover{color:var(--red);}
+
+  .empty-state{padding:60px 20px;text-align:center;color:var(--ink-soft);}
+  .empty-state h3{font-family:'Space Grotesk',sans-serif;color:var(--ink);margin-bottom:6px;}
+
+  /* ---- Pipeline / Kanban ---- */
+  .kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:start;}
+  .kcol{background:var(--off-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px;min-height:120px;}
+  .kcol-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 2px;}
+  .kcol-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:var(--ink-soft);}
+  .kcol-count{font-family:'JetBrains Mono',monospace;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:1px 7px;}
+  .kcard{background:#fff;border:1px solid var(--line);border-radius:8px;padding:11px 12px;margin-bottom:9px;}
+  .kcard-name{font-weight:600;font-size:13px;margin-bottom:3px;}
+  .kcard-meta{font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;}
+  .kcard select{width:100%;font-size:11.5px;padding:5px 6px;}
+
+  /* ---- Modal ---- */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(15,24,38,0.55);align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .overlay.active{display:flex;}
+  .modal{background:#fff;border-radius:12px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;padding:26px 28px;}
+  .modal h2{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 4px 0;}
+  .modal .page-sub{margin-bottom:18px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-grid .full{grid-column:1/-1;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+  input[type=text],input[type=url],input[type=email],input[type=tel],textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:'Inter',sans-serif;}
+  textarea{resize:vertical;min-height:60px;}
+  .field{margin-bottom:12px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;border-top:1px solid var(--line);padding-top:16px;}
+
+  input[type=file]{display:none;}
+  .drop{border:1.5px dashed var(--line);border-radius:8px;padding:22px;text-align:center;color:var(--ink-soft);font-size:12.5px;cursor:pointer;}
+  .drop:hover{border-color:var(--gold);}
+
+  @media (max-width:900px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:fixed;bottom:0;left:0;right:0;top:auto;flex-direction:row;padding:0;z-index:40;border-top:1px solid rgba(255,255,255,0.1);}
+    .brand{display:none;}
+    .nav{flex-direction:row;padding:4px 4px calc(4px + env(safe-area-inset-bottom));width:100%;justify-content:space-around;gap:0;}
+    .nav-item{flex-direction:column;flex:1;text-align:center;gap:3px;padding:8px 4px;border-radius:8px;font-size:11px;}
+    .nav-num{width:auto;font-size:10px;}
+    .sidebar-foot{display:none;}
+    .main{padding:18px 16px 90px 16px;}
+    .kanban{grid-template-columns:1fr;}
+    .form-grid{grid-template-columns:1fr;}
+
+    /* Leads table -> stacked cards */
+    .table-wrap{overflow-x:visible;border:none;background:transparent;}
+    table{min-width:0;}
+    table, thead, tbody, tr{display:block;width:100%;}
+    thead{display:none;}
+    tr{background:#fff;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;padding:6px 4px;}
+    td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 12px;border-bottom:1px solid var(--off);text-align:right;}
+    td:last-child{border-bottom:none;}
+    td::before{content:attr(data-label);font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.02em;text-align:left;flex-shrink:0;}
+    td[data-label=""]::before{content:none;}
+    td[data-label="Unternehmen"]{text-align:left;flex-direction:column;align-items:flex-start;gap:2px;}
+    td[data-label="Unternehmen"]::before{display:none;}
+    .row-actions{justify-content:flex-end;width:100%;}
+    .status-pill{max-width:150px;}
+  }
+  @media (max-width:520px){
+    .stats{grid-template-columns:repeat(2,1fr);}
+    h1{font-size:22px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">VM<span>·</span>Group</div>
+      <div class="brand-sub">Akquise-System</div>
+    </div>
+    <div class="nav">
+      <div class="nav-item active" data-page="dashboard"><span class="nav-num">01</span>Dashboard</div>
+      <div class="nav-item" data-page="leads"><span class="nav-num">02</span>Leads</div>
+      <div class="nav-item" data-page="pipeline"><span class="nav-num">03</span>Pipeline</div>
+      <div class="nav-item" data-page="autosearch"><span class="nav-num">04</span>Auto-Suche</div>
+      <div class="nav-item" data-page="settings"><span class="nav-num">05</span>Einstellungen</div>
+    </div>
+    <div class="sidebar-foot">vm-group.com</div>
+  </div>
+
+  <div class="main">
+
+    <!-- ================= DASHBOARD ================= -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="page-sub">Übersicht über deine Akquise-Pipeline</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="openImport()">CSV importieren</button>
+          <button class="btn btn-gold" onclick="openAdd()">+ Neuer Lead</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stat-cards"></div>
+
+      <div class="info-card">
+        <h3>Woher bekomme ich die Firmendaten?</h3>
+        <p>Dieses System durchsucht nicht automatisch das Internet — es organisiert, filtert und priorisiert Leads, die du reinziehst. Gute Quellen für Rohdaten in Deutschland:</p>
+        <ul>
+          <li><strong>Google Maps / Places</strong> — lokale Betriebe filtern nach "keine Website" (kein Website-Link im Eintrag)</li>
+          <li><strong>Handelsregister / Unternehmensregister / North Data</strong> — Neugründungen & Geschäftsführer-Namen</li>
+          <li><strong>Gelbe Seiten / Das Örtliche</strong> — Branchenlisten mit Telefonnummern</li>
+          <li><strong>LinkedIn Sales Navigator</strong> — Startups, Gründer, Ansprechpartner</li>
+          <li><strong>IHK-Verzeichnisse</strong> — regionale Unternehmenslisten nach Branche</li>
+        </ul>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-family:'Space Grotesk',sans-serif; margin:0; font-size:15px;">Höchste Priorität</h3>
+        <span class="muted" style="font-size:12px;">nach Bedarfs-Score sortiert</span>
+      </div>
+      <div class="table-wrap" id="priority-table-wrap"></div>
+    </div>
+
+    <!-- ================= LEADS ================= -->
+    <div class="page" id="page-leads">
+      <div class="page-head">
+        <div>
+          <h1>Leads</h1>
+          <div class="page-sub">Alle erfassten Unternehmen, filterbar</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+          <button class="btn btn-outline" onclick="openImport()">CSV importieren</button>
+          <button class="btn btn-gold" onclick="openAdd()">+ Neuer Lead</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input class="search" id="searchInput" type="text" placeholder="Suche nach Name, Stadt, Branche…" oninput="renderLeadsTable()">
+        <select id="filterCategory" onchange="renderLeadsTable()">
+          <option value="">Alle Website-Status</option>
+          <option value="none">Kein Website</option>
+          <option value="outdated">Veraltete Website</option>
+          <option value="startup">Startup</option>
+          <option value="good">Gute Website</option>
+        </select>
+        <select id="filterStatus" onchange="renderLeadsTable()">
+          <option value="">Alle Pipeline-Status</option>
+          <option value="neu">Neu</option>
+          <option value="kontaktiert">Kontaktiert</option>
+          <option value="termin">Termin</option>
+          <option value="abgeschlossen">Abgeschlossen</option>
+          <option value="verloren">Verloren</option>
+        </select>
+        <select id="sortBy" onchange="renderLeadsTable()">
+          <option value="score-desc">Bedarf: hoch → niedrig</option>
+          <option value="score-asc">Bedarf: niedrig → hoch</option>
+          <option value="name-asc">Name A–Z</option>
+          <option value="date-desc">Neueste zuerst</option>
+        </select>
+      </div>
+
+      <div class="table-wrap" id="leads-table-wrap"></div>
+    </div>
+
+    <!-- ================= PIPELINE ================= -->
+    <div class="page" id="page-pipeline">
+      <div class="page-head">
+        <div>
+          <h1>Pipeline</h1>
+          <div class="page-sub">Vom Erstkontakt bis zum Termin</div>
+        </div>
+        <button class="btn btn-gold" onclick="openAdd()">+ Neuer Lead</button>
+      </div>
+      <div class="kanban" id="kanban-wrap"></div>
+    </div>
+
+    <!-- ================= AUTO-SUCHE ================= -->
+    <div class="page" id="page-autosearch">
+      <div class="page-head">
+        <div>
+          <h1>Auto-Suche</h1>
+          <div class="page-sub">Lokale Betriebe automatisch über Google Places finden</div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h3>Wie das funktioniert</h3>
+        <p>Diese Funktion nutzt die offizielle Google Places API mit deinem eigenen API-Key. Sie durchsucht Google Maps nach Betrieben in deiner Zielregion, prüft je Treffer ob eine Website hinterlegt ist, und legt Treffer ohne Website automatisch als neuen Lead an. Name, Adresse und Telefonnummer kommen aus den Places-Daten — Geschäftsführername und E-Mail liefert Google nicht, die trägst du bei Bedarf manuell nach.</p>
+        <p style="margin-bottom:0;">API-Key benötigt: Google Cloud Projekt → "Places API (New)" aktivieren → Abrechnung einrichten (es gibt ein kostenloses Kontingent) → API-Key erstellen. Falls Anfragen aus diesem Fenster blockiert werden, den Key vorübergehend ohne Referrer-Beschränkung testen, aber auf "Places API" beschränkt lassen.</p>
+      </div>
+
+      <div class="table-wrap" style="padding:22px 24px; margin-bottom:22px;">
+        <div class="field">
+          <label>Google Places API-Key</label>
+          <input type="text" id="placesKey" placeholder="AIza…">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="savePlacesKey()">Key speichern</button>
+          <span id="keyStatus" class="muted" style="font-size:12px; align-self:center;"></span>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="padding:22px 24px;">
+        <div class="form-grid" style="margin-bottom:16px;">
+          <div class="field full">
+            <label>Stadt / Region</label>
+            <input type="text" id="searchCity" placeholder="z. B. Düsseldorf">
+          </div>
+        </div>
+        <label style="margin-bottom:8px;">Zielgruppen (Mehrfachauswahl)</label>
+        <div id="industryChecks" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; margin-bottom:14px;">
+          <label style="font-weight:400; display:flex; gap:7px; align-items:center;"><input type="checkbox" value="Friseursalon" checked> Friseursalons</label>
+          <label style="font-weight:400; display:flex; gap:7px; align-items:center;"><input type="checkbox" value="Handwerksbetrieb" checked> Handwerksbetriebe</label>
+          <label style="font-weight:400; display:flex; gap:7px; align-items:center;"><input type="checkbox" value="Coach Berater" checked> Coaches / Berater</label>
+          <label style="font-weight:400; display:flex; gap:7px; align-items:center;"><input type="checkbox" value="Einzelhandel Laden"> Läden / Einzelhandel</label>
+          <label style="font-weight:400; display:flex; gap:7px; align-items:center;"><input type="checkbox" value="Restaurant"> Restaurants</label>
+          <label style="font-weight:400; display:flex; gap:7px; align-items:center;"><input type="checkbox" value="Jugendzentrum"> Jugendzentren / öffentl. Einrichtungen</label>
+        </div>
+        <div class="field">
+          <label>Zusätzlicher Suchbegriff (optional)</label>
+          <input type="text" id="customTerm" placeholder="z. B. Tattoo Studio">
+        </div>
+        <div class="btn-row" style="margin-top:6px;">
+          <button class="btn btn-gold" onclick="runAutoSearch()">Suche starten</button>
+        </div>
+        <div id="searchLog" style="margin-top:16px; font-size:12.5px; color:var(--ink-soft); line-height:1.9;"></div>
+      </div>
+    </div>
+
+    <!-- ================= EINSTELLUNGEN / SYNC ================= -->
+    <div class="page" id="page-settings">
+      <div class="page-head">
+        <div>
+          <h1>Einstellungen</h1>
+          <div class="page-sub">Geräte-Synchronisierung (Handy ↔ Laptop)</div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h3>Wie die Synchronisierung funktioniert</h3>
+        <p>Ohne Einrichtung speichert das System deine Leads nur lokal auf dem jeweiligen Gerät. Mit einer kostenlosen Firebase-Datenbank (gehört zu Google) werden deine Leads stattdessen zentral gespeichert — dann siehst du auf dem Handy und am Laptop immer denselben Stand, solange du auf beiden Geräten mit demselben Login angemeldet bist.</p>
+        <p style="margin-bottom:0;">Einmalige Einrichtung: Firebase-Projekt anlegen (kann dasselbe Google-Cloud-Projekt "VMG Leads" sein) → Firestore-Datenbank aktivieren → Konfiguration hier einfügen → Konto mit E-Mail/Passwort anlegen. Danach auf jedem Gerät: Datei öffnen, Konfiguration einfügen (einmalig), mit demselben Login anmelden.</p>
+      </div>
+
+      <div class="table-wrap" style="padding:22px 24px; margin-bottom:22px;">
+        <label>Firebase-Konfiguration (aus der Firebase-Konsole kopiert)</label>
+        <textarea id="firebaseConfigInput" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "...", ...}' style="min-height:110px; font-family:'JetBrains Mono',monospace; font-size:12px;"></textarea>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-outline" onclick="saveFirebaseConfig()">Konfiguration speichern & verbinden</button>
+          <span id="fbConfigStatus" class="muted" style="font-size:12px; align-self:center;"></span>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="padding:22px 24px;">
+        <div id="authLoggedOut">
+          <div class="form-grid" style="margin-bottom:10px;">
+            <div class="field"><label>E-Mail</label><input type="text" id="authEmail" placeholder="du@vm-group.com"></div>
+            <div class="field"><label>Passwort</label><input type="text" id="authPassword" placeholder="mind. 6 Zeichen"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-gold" onclick="doLogin()">Anmelden</button>
+            <button class="btn btn-outline" onclick="doRegister()">Konto anlegen (erstes Mal)</button>
+          </div>
+          <div id="authStatus" class="muted" style="font-size:12px; margin-top:10px;"></div>
+        </div>
+        <div id="authLoggedIn" style="display:none;">
+          <div style="font-size:13.5px; margin-bottom:10px;">Angemeldet als <strong id="authUserEmail"></strong> — Leads werden automatisch synchronisiert.</div>
+          <button class="btn btn-outline" onclick="doLogout()">Abmelden</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ================= ADD/EDIT MODAL ================= -->
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Neuer Lead</h2>
+    <div class="page-sub">Firmen- und Kontaktdaten erfassen</div>
+    <form id="leadForm" onsubmit="return saveLeadForm(event)">
+      <input type="hidden" id="f-id">
+      <div class="form-grid">
+        <div class="field full"><label>Firmenname *</label><input type="text" id="f-name" required></div>
+        <div class="field"><label>Website (leer lassen falls keine)</label><input type="text" id="f-website" placeholder="https://…"></div>
+        <div class="field"><label>Website-Status</label>
+          <select id="f-webstatus">
+            <option value="none">Kein Website</option>
+            <option value="outdated">Veraltete Website</option>
+            <option value="startup">Startup (neu)</option>
+            <option value="good">Gute Website</option>
+          </select>
+        </div>
+        <div class="field"><label>Stadt / Region</label><input type="text" id="f-city"></div>
+        <div class="field"><label>Branche</label><input type="text" id="f-industry"></div>
+        <div class="field"><label>Geschäftsführer</label><input type="text" id="f-director"></div>
+        <div class="field"><label>Telefon (Geschäftsführer)</label><input type="tel" id="f-directorphone"></div>
+        <div class="field"><label>Telefon (Firma)</label><input type="tel" id="f-phone"></div>
+        <div class="field"><label>E-Mail</label><input type="email" id="f-email"></div>
+        <div class="field"><label>Bedarfs-Score (1–5)</label>
+          <select id="f-score"><option value="5">5 – sehr hoch</option><option value="4">4 – hoch</option><option value="3" selected>3 – mittel</option><option value="2">2 – niedrig</option><option value="1">1 – sehr niedrig</option></select>
+        </div>
+        <div class="field"><label>Pipeline-Status</label>
+          <select id="f-status">
+            <option value="neu">Neu</option>
+            <option value="kontaktiert">Kontaktiert</option>
+            <option value="termin">Termin</option>
+            <option value="abgeschlossen">Abgeschlossen</option>
+            <option value="verloren">Verloren</option>
+          </select>
+        </div>
+        <div class="field full"><label>Notizen</label><textarea id="f-notes"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeAdd()">Abbrechen</button>
+        <button type="submit" class="btn btn-gold">Speichern</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= IMPORT MODAL ================= -->
+<div class="overlay" id="importOverlay">
+  <div class="modal">
+    <h2>CSV importieren</h2>
+    <div class="page-sub">Spalten: Name, Website, WebsiteStatus (none/outdated/startup/good), Stadt, Branche, Geschaeftsfuehrer, TelefonGF, Telefon, Email, Score, Status, Notizen — Groß-/Kleinschreibung egal, fehlende Spalten werden übersprungen.</div>
+      <label style="margin-top:14px; display:block;">Datei wählen</label>
+      <div class="drop" onclick="document.getElementById('csvFile').click()">Klicken, um eine CSV-Datei hochzuladen</div>
+      <input type="file" id="csvFile" accept=".csv" onchange="handleCSV(event)">
+      <div id="importStatus" style="margin-top:12px; font-size:12.5px; color:var(--ink-soft);"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeImport()">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let leads = [];
+
+// ---------- Firebase (cross-device sync) ----------
+let fbApp = null, fbAuth = null, fbDb = null, fbUser = null;
+
+function updateAuthUI(){
+  const loggedOut = document.getElementById('authLoggedOut');
+  const loggedIn = document.getElementById('authLoggedIn');
+  if(!loggedOut) return; // page not yet in DOM
+  if(fbUser){
+    loggedOut.style.display = 'none';
+    loggedIn.style.display = 'block';
+    document.getElementById('authUserEmail').textContent = fbUser.email;
+  }else{
+    loggedOut.style.display = 'block';
+    loggedIn.style.display = 'none';
+  }
+}
+
+function initFirebaseFromConfig(configStr){
+  try{
+    const config = JSON.parse(configStr);
+    if(!fbApp){
+      fbApp = firebase.initializeApp(config);
+    }
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+    fbAuth.onAuthStateChanged(function(user){
+      fbUser = user;
+      updateAuthUI();
+      loadLeads(); // reload from the now-current backend (Firestore or local)
+    });
+    return true;
+  }catch(e){
+    console.error('Firebase-Konfiguration ungültig', e);
+    return false;
+  }
+}
+
+async function saveFirebaseConfig(){
+  const raw = document.getElementById('firebaseConfigInput').value.trim();
+  if(!raw){ document.getElementById('fbConfigStatus').textContent = 'Bitte Konfiguration einfügen.'; return; }
+  localStorage.setItem('vmg-firebase-config', raw);
+  const ok = initFirebaseFromConfig(raw);
+  document.getElementById('fbConfigStatus').textContent = ok ? 'Verbunden. Jetzt anmelden oder Konto anlegen.' : 'Konfiguration konnte nicht gelesen werden — bitte JSON prüfen.';
+}
+
+async function doRegister(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pw = document.getElementById('authPassword').value;
+  if(!fbAuth){ document.getElementById('authStatus').textContent = 'Bitte zuerst die Firebase-Konfiguration speichern.'; return; }
+  try{
+    await fbAuth.createUserWithEmailAndPassword(email, pw);
+    document.getElementById('authStatus').textContent = 'Konto angelegt und angemeldet.';
+  }catch(e){
+    document.getElementById('authStatus').textContent = 'Fehler: ' + e.message;
+  }
+}
+
+async function doLogin(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pw = document.getElementById('authPassword').value;
+  if(!fbAuth){ document.getElementById('authStatus').textContent = 'Bitte zuerst die Firebase-Konfiguration speichern.'; return; }
+  try{
+    await fbAuth.signInWithEmailAndPassword(email, pw);
+    document.getElementById('authStatus').textContent = 'Angemeldet.';
+  }catch(e){
+    document.getElementById('authStatus').textContent = 'Fehler: ' + e.message;
+  }
+}
+
+async function doLogout(){
+  if(fbAuth) await fbAuth.signOut();
+}
+
+// Storage helper: Firestore (when logged in) > window.storage (inside Claude) > localStorage (offline/no setup).
+const hasClaudeStorage = () => typeof window.storage !== 'undefined' && window.storage;
+async function storageGet(key){
+  if(fbDb && fbUser){
+    try{
+      const doc = await fbDb.collection('users').doc(fbUser.uid).collection('store').doc(key).get();
+      return doc.exists ? doc.data().value : null;
+    }catch(e){ console.error('Firestore-Lesefehler', e); }
+  }
+  if(hasClaudeStorage()){
+    try{ const r = await window.storage.get(key, false); return r ? r.value : null; }
+    catch(e){ return null; }
+  }
+  return localStorage.getItem(key);
+}
+async function storageSet(key, value){
+  if(fbDb && fbUser){
+    try{
+      await fbDb.collection('users').doc(fbUser.uid).collection('store').doc(key).set({value});
+      localStorage.setItem(key, value); // local cache
+      return;
+    }catch(e){ console.error('Firestore-Schreibfehler', e); }
+  }
+  if(hasClaudeStorage()){
+    try{ await window.storage.set(key, value, false); return; }
+    catch(e){ /* fall through to localStorage as backup */ }
+  }
+  try{ localStorage.setItem(key, value); }catch(e){ console.error('Lokales Speichern fehlgeschlagen', e); }
+}
+
+function loadSavedFirebaseConfig(){
+  const saved = localStorage.getItem('vmg-firebase-config');
+  if(saved){
+    document.getElementById('firebaseConfigInput').value = saved;
+    const ok = initFirebaseFromConfig(saved);
+    document.getElementById('fbConfigStatus').textContent = ok ? 'Verbunden.' : 'Gespeicherte Konfiguration ungültig.';
+  }
+}
+
+const STATUS_LABEL = {neu:'Neu', kontaktiert:'Kontaktiert', termin:'Termin', abgeschlossen:'Abgeschlossen', verloren:'Verloren'};
+const WEBSTATUS_LABEL = {none:'Kein Website', outdated:'Veraltet', startup:'Startup', good:'Gut'};
+const WEBSTATUS_CLASS = {none:'badge-none', outdated:'badge-outdated', startup:'badge-startup', good:'badge-good'};
+
+async function loadLeads(){
+  try{
+    const val = await storageGet('vmg-leads');
+    leads = val ? JSON.parse(val) : [];
+  }catch(e){ leads = []; }
+  renderAll();
+}
+async function persist(){
+  await storageSet('vmg-leads', JSON.stringify(leads));
+}
+
+function uid(){ return 'l' + Math.random().toString(36).slice(2,10); }
+
+// ---------- Navigation ----------
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('page-'+el.dataset.page).classList.add('active');
+  });
+});
+
+// ---------- Modal: Add/Edit ----------
+function openAdd(lead){
+  document.getElementById('leadForm').reset();
+  document.getElementById('f-id').value = '';
+  document.getElementById('modalTitle').textContent = 'Neuer Lead';
+  if(lead){
+    document.getElementById('modalTitle').textContent = 'Lead bearbeiten';
+    document.getElementById('f-id').value = lead.id;
+    document.getElementById('f-name').value = lead.name||'';
+    document.getElementById('f-website').value = lead.website||'';
+    document.getElementById('f-webstatus').value = lead.webstatus||'none';
+    document.getElementById('f-city').value = lead.city||'';
+    document.getElementById('f-industry').value = lead.industry||'';
+    document.getElementById('f-director').value = lead.director||'';
+    document.getElementById('f-directorphone').value = lead.directorphone||'';
+    document.getElementById('f-phone').value = lead.phone||'';
+    document.getElementById('f-email').value = lead.email||'';
+    document.getElementById('f-score').value = lead.score||3;
+    document.getElementById('f-status').value = lead.status||'neu';
+    document.getElementById('f-notes').value = lead.notes||'';
+  }
+  document.getElementById('addOverlay').classList.add('active');
+}
+function closeAdd(){ document.getElementById('addOverlay').classList.remove('active'); }
+
+function saveLeadForm(e){
+  e.preventDefault();
+  const id = document.getElementById('f-id').value || uid();
+  const existingIdx = leads.findIndex(l=>l.id===id);
+  const lead = {
+    id,
+    name: document.getElementById('f-name').value.trim(),
+    website: document.getElementById('f-website').value.trim(),
+    webstatus: document.getElementById('f-webstatus').value,
+    city: document.getElementById('f-city').value.trim(),
+    industry: document.getElementById('f-industry').value.trim(),
+    director: document.getElementById('f-director').value.trim(),
+    directorphone: document.getElementById('f-directorphone').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    email: document.getElementById('f-email').value.trim(),
+    score: parseInt(document.getElementById('f-score').value,10),
+    status: document.getElementById('f-status').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    added: existingIdx>=0 ? leads[existingIdx].added : Date.now()
+  };
+  if(existingIdx>=0) leads[existingIdx]=lead; else leads.push(lead);
+  persist().then(renderAll);
+  closeAdd();
+  return false;
+}
+
+function deleteLead(id){
+  if(!confirm('Diesen Lead wirklich löschen?')) return;
+  leads = leads.filter(l=>l.id!==id);
+  persist().then(renderAll);
+}
+
+function editLead(id){ openAdd(leads.find(l=>l.id===id)); }
+
+function updateStatus(id, newStatus){
+  const l = leads.find(x=>x.id===id);
+  if(l){ l.status = newStatus; persist().then(renderAll); }
+}
+
+// ---------- Import ----------
+function openImport(){ document.getElementById('importOverlay').classList.add('active'); document.getElementById('importStatus').textContent=''; }
+function closeImport(){ document.getElementById('importOverlay').classList.remove('active'); }
+
+function handleCSV(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  Papa.parse(file, {
+    header:true, skipEmptyLines:true,
+    complete: function(results){
+      let count=0;
+      results.data.forEach(row=>{
+        const get = (keys)=>{
+          for(const k of Object.keys(row)){
+            if(keys.includes(k.trim().toLowerCase())) return (row[k]||'').trim();
+          }
+          return '';
+        };
+        const name = get(['name','firma','firmenname','company']);
+        if(!name) return;
+        const webstatusRaw = get(['websitestatus','webstatus','status_website']).toLowerCase();
+        const webstatus = ['none','outdated','startup','good'].includes(webstatusRaw) ? webstatusRaw : 'none';
+        const statusRaw = get(['status','pipelinestatus']).toLowerCase();
+        const status = ['neu','kontaktiert','termin','abgeschlossen','verloren'].includes(statusRaw) ? statusRaw : 'neu';
+        const scoreRaw = parseInt(get(['score','bedarf','bedarfsscore']),10);
+        leads.push({
+          id: uid(),
+          name,
+          website: get(['website','webseite','url']),
+          webstatus,
+          city: get(['stadt','city','ort']),
+          industry: get(['branche','industry']),
+          director: get(['geschaeftsfuehrer','geschäftsführer','gf','director']),
+          directorphone: get(['telefongf','gftelefon','directorphone']),
+          phone: get(['telefon','phone','tel']),
+          email: get(['email','e-mail','mail']),
+          score: isNaN(scoreRaw) ? 3 : Math.min(5,Math.max(1,scoreRaw)),
+          status,
+          notes: get(['notizen','notes','anmerkung']),
+          added: Date.now()
+        });
+        count++;
+      });
+      persist().then(renderAll);
+      document.getElementById('importStatus').textContent = count + ' Leads importiert.';
+      e.target.value = '';
+    },
+    error: function(err){
+      document.getElementById('importStatus').textContent = 'Fehler beim Einlesen: ' + err.message;
+    }
+  });
+}
+
+function exportCSV(){
+  if(leads.length===0){ alert('Keine Leads zum Exportieren vorhanden.'); return; }
+  const cols = ['name','website','webstatus','city','industry','director','directorphone','phone','email','score','status','notes'];
+  const header = ['Name','Website','WebsiteStatus','Stadt','Branche','Geschaeftsfuehrer','TelefonGF','Telefon','Email','Score','Status','Notizen'];
+  const rows = [header.join(',')].concat(leads.map(l=>cols.map(c=>{
+    const v = (l[c]!==undefined && l[c]!==null) ? String(l[c]).replace(/"/g,'""') : '';
+    return '"'+v+'"';
+  }).join(',')));
+  const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'vmg-leads-export.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Rendering ----------
+function renderAll(){
+  renderStats();
+  renderPriorityTable();
+  renderLeadsTable();
+  renderKanban();
+}
+
+function renderStats(){
+  const total = leads.length;
+  const none = leads.filter(l=>l.webstatus==='none').length;
+  const outdated = leads.filter(l=>l.webstatus==='outdated').length;
+  const startup = leads.filter(l=>l.webstatus==='startup').length;
+  const termine = leads.filter(l=>l.status==='termin').length;
+  const abgeschlossen = leads.filter(l=>l.status==='abgeschlossen').length;
+  const cards = [
+    {n:total, l:'Leads gesamt', a:false},
+    {n:none, l:'Kein Website', a:true},
+    {n:outdated, l:'Veraltete Website', a:false},
+    {n:startup, l:'Startups', a:false},
+    {n:termine, l:'Termine', a:false},
+    {n:abgeschlossen, l:'Abgeschlossen', a:false},
+  ];
+  document.getElementById('stat-cards').innerHTML = cards.map(c=>
+    `<div class="stat-card ${c.a?'accent':''}"><div class="stat-num">${c.n}</div><div class="stat-label">${c.l}</div></div>`
+  ).join('');
+}
+
+function leadRowHTML(l, compact){
+  const website = l.website ? `<a class="link" href="${escapeAttr(l.website)}" target="_blank" rel="noopener">${escapeHTML(shortUrl(l.website))}</a>` : '<span class="muted">— keine —</span>';
+  const phoneVal = l.directorphone || l.phone || '';
+  const phoneHTML = phoneVal ? `<a class="link" href="tel:${escapeAttr(phoneVal.replace(/\s+/g,''))}">${escapeHTML(phoneVal)}</a>` : '<span class="muted">—</span>';
+  const emailHTML = l.email ? `<a class="link" href="mailto:${escapeAttr(l.email)}">${escapeHTML(l.email)}</a>` : '<span class="muted">—</span>';
+  return `<tr>
+    <td data-label="Unternehmen"><div class="company-name">${escapeHTML(l.name)}</div><div class="company-city">${escapeHTML(l.city||'')}${l.industry? ' · '+escapeHTML(l.industry):''}</div></td>
+    <td data-label="Website-Status"><span class="badge ${WEBSTATUS_CLASS[l.webstatus]}"><span class="dot"></span>${WEBSTATUS_LABEL[l.webstatus]}</span></td>
+    <td data-label="Website">${website}</td>
+    <td data-label="Geschäftsführer">${escapeHTML(l.director||'—')}</td>
+    <td data-label="Telefon" class="nowrap">${phoneHTML}</td>
+    <td data-label="E-Mail">${emailHTML}</td>
+    <td data-label="Score" class="nowrap"><span class="score-num">${l.score}/5</span></td>
+    <td data-label="Pipeline">
+      <select class="status-pill" onchange="updateStatus('${l.id}', this.value)">
+        ${Object.entries(STATUS_LABEL).map(([k,v])=>`<option value="${k}" ${l.status===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </td>
+    <td data-label="">
+      <div class="row-actions">
+        <button class="icon-btn" title="Bearbeiten" onclick="editLead('${l.id}')">✎</button>
+        <button class="icon-btn" title="Löschen" onclick="deleteLead('${l.id}')">✕</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function renderPriorityTable(){
+  const top = [...leads].filter(l=>l.status!=='abgeschlossen' && l.status!=='verloren').sort((a,b)=>b.score-a.score).slice(0,5);
+  const wrap = document.getElementById('priority-table-wrap');
+  if(top.length===0){
+    wrap.innerHTML = emptyState();
+    return;
+  }
+  wrap.innerHTML = `<table><thead><tr><th>Unternehmen</th><th>Website-Status</th><th>Website</th><th>Geschäftsführer</th><th>Telefon</th><th>E-Mail</th><th>Score</th><th>Pipeline</th><th></th></tr></thead>
+  <tbody>${top.map(l=>leadRowHTML(l)).join('')}</tbody></table>`;
+}
+
+function renderLeadsTable(){
+  const search = (document.getElementById('searchInput').value||'').toLowerCase();
+  const cat = document.getElementById('filterCategory').value;
+  const stat = document.getElementById('filterStatus').value;
+  const sort = document.getElementById('sortBy').value;
+
+  let filtered = leads.filter(l=>{
+    if(cat && l.webstatus!==cat) return false;
+    if(stat && l.status!==stat) return false;
+    if(search){
+      const hay = (l.name+' '+l.city+' '+l.industry).toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a,b)=>{
+    if(sort==='score-desc') return b.score-a.score;
+    if(sort==='score-asc') return a.score-b.score;
+    if(sort==='name-asc') return a.name.localeCompare(b.name);
+    if(sort==='date-desc') return b.added-a.added;
+    return 0;
+  });
+
+  const wrap = document.getElementById('leads-table-wrap');
+  if(filtered.length===0){
+    wrap.innerHTML = emptyState();
+    return;
+  }
+  wrap.innerHTML = `<table><thead><tr><th>Unternehmen</th><th>Website-Status</th><th>Website</th><th>Geschäftsführer</th><th>Telefon</th><th>E-Mail</th><th>Score</th><th>Pipeline</th><th></th></tr></thead>
+  <tbody>${filtered.map(l=>leadRowHTML(l)).join('')}</tbody></table>`;
+}
+
+function renderKanban(){
+  const cols = Object.keys(STATUS_LABEL);
+  const wrap = document.getElementById('kanban-wrap');
+  wrap.innerHTML = cols.map(colKey=>{
+    const items = leads.filter(l=>l.status===colKey).sort((a,b)=>b.score-a.score);
+    return `<div class="kcol">
+      <div class="kcol-head"><span class="kcol-title">${STATUS_LABEL[colKey]}</span><span class="kcol-count">${items.length}</span></div>
+      ${items.map(l=>`
+        <div class="kcard">
+          <div class="kcard-name">${escapeHTML(l.name)}</div>
+          <div class="kcard-meta"><span class="badge ${WEBSTATUS_CLASS[l.webstatus]}" style="margin-right:5px;">${WEBSTATUS_LABEL[l.webstatus]}</span>Score ${l.score}/5</div>
+          <select onchange="updateStatus('${l.id}', this.value)">
+            ${cols.map(k=>`<option value="${k}" ${l.status===k?'selected':''}>${STATUS_LABEL[k]}</option>`).join('')}
+          </select>
+        </div>
+      `).join('') || '<div class="muted" style="font-size:12px; padding:6px 2px;">Keine Leads</div>'}
+    </div>`;
+  }).join('');
+}
+
+function emptyState(){
+  return `<div class="empty-state">
+    <h3>Noch keine Leads erfasst</h3>
+    <p>Füge deinen ersten Lead manuell hinzu oder importiere eine CSV-Liste.</p>
+    <div class="btn-row" style="justify-content:center; margin-top:14px;">
+      <button class="btn btn-gold" onclick="openAdd()">+ Neuer Lead</button>
+      <button class="btn btn-outline" onclick="openImport()">CSV importieren</button>
+    </div>
+  </div>`;
+}
+
+function escapeHTML(str){
+  return (str||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHTML(str); }
+function shortUrl(url){
+  return url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+}
+
+// ---------- Google Places Auto-Suche ----------
+let placesApiKey = '';
+
+async function loadPlacesKey(){
+  try{
+    const val = await storageGet('vmg-places-key');
+    placesApiKey = val || '';
+    if(placesApiKey){
+      document.getElementById('placesKey').value = placesApiKey;
+      document.getElementById('keyStatus').textContent = 'Key gespeichert.';
+    }
+  }catch(e){ /* no key stored yet */ }
+}
+
+async function savePlacesKey(){
+  placesApiKey = document.getElementById('placesKey').value.trim();
+  await storageSet('vmg-places-key', placesApiKey);
+  document.getElementById('keyStatus').textContent = placesApiKey ? 'Key gespeichert.' : 'Key entfernt.';
+}
+
+function logLine(msg){
+  const el = document.getElementById('searchLog');
+  el.innerHTML += `<div>${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function searchPlacesText(query){
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Goog-Api-Key': placesApiKey,
+      'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.websiteUri,places.internationalPhoneNumber,places.nationalPhoneNumber,places.id'
+    },
+    body: JSON.stringify({ textQuery: query, languageCode:'de' })
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throw new Error(`HTTP ${res.status}: ${errText.slice(0,200)}`);
+  }
+  const data = await res.json();
+  return data.places || [];
+}
+
+async function runAutoSearch(){
+  if(!placesApiKey){
+    alert('Bitte zuerst einen Google Places API-Key eingeben und speichern.');
+    return;
+  }
+  const city = document.getElementById('searchCity').value.trim();
+  if(!city){
+    alert('Bitte eine Stadt / Region angeben.');
+    return;
+  }
+  const checks = Array.from(document.querySelectorAll('#industryChecks input:checked')).map(c=>c.value);
+  const custom = document.getElementById('customTerm').value.trim();
+  if(custom) checks.push(custom);
+  if(checks.length===0){
+    alert('Bitte mindestens eine Zielgruppe auswählen.');
+    return;
+  }
+
+  document.getElementById('searchLog').innerHTML = '';
+  let totalFound = 0, totalAdded = 0;
+
+  for(const branch of checks){
+    const query = `${branch} in ${city}`;
+    logLine(`Suche: "${query}" …`);
+    try{
+      const places = await searchPlacesText(query);
+      totalFound += places.length;
+      let addedForBranch = 0;
+      places.forEach(p=>{
+        const name = p.displayName ? p.displayName.text : '';
+        if(!name) return;
+        const address = p.formattedAddress || '';
+        const already = leads.some(l => l.name.toLowerCase()===name.toLowerCase() && l.city.toLowerCase().includes(city.toLowerCase()));
+        if(already) return;
+        const hasWebsite = !!p.websiteUri;
+        leads.push({
+          id: uid(),
+          name,
+          website: p.websiteUri || '',
+          webstatus: hasWebsite ? 'good' : 'none',
+          city: address,
+          industry: branch,
+          director: '',
+          directorphone: '',
+          phone: p.internationalPhoneNumber || p.nationalPhoneNumber || '',
+          email: '',
+          score: hasWebsite ? 3 : 5,
+          status: 'neu',
+          notes: hasWebsite ? 'Website vorhanden — Qualität manuell prüfen und Status anpassen.' : 'Über Google Places gefunden, kein Website-Eintrag.',
+          added: Date.now()
+        });
+        addedForBranch++;
+      });
+      totalAdded += addedForBranch;
+      logLine(`→ ${places.length} Treffer, ${addedForBranch} neue Leads hinzugefügt.`);
+    }catch(err){
+      logLine(`→ Fehler bei "${query}": ${escapeHTML(err.message)}. Prüfe API-Key und Referrer-Beschränkung.`);
+    }
+    await new Promise(r=>setTimeout(r, 300));
+  }
+
+  await persist();
+  renderAll();
+  logLine(`<strong>Fertig.</strong> ${totalFound} Treffer insgesamt, ${totalAdded} neue Leads angelegt.`);
+}
+
+loadPlacesKey();
+loadSavedFirebaseConfig();
+loadLeads();
+</script>
+</body>
+</html>
