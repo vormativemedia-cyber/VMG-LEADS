@@ -450,6 +450,7 @@
 
 <script>
 let leads = [];
+let leadsLoading = false;
 
 // ---------- Firebase (cross-device sync) ----------
 let fbApp = null, fbAuth = null, fbDb = null, fbUser = null;
@@ -568,10 +569,13 @@ const WEBSTATUS_LABEL = {none:'Kein Website', outdated:'Veraltet', startup:'Star
 const WEBSTATUS_CLASS = {none:'badge-none', outdated:'badge-outdated', startup:'badge-startup', good:'badge-good'};
 
 async function loadLeads(){
+  leadsLoading = true;
+  renderAll();
   try{
     const val = await storageGet('vmg-leads');
     leads = val ? JSON.parse(val) : [];
   }catch(e){ leads = []; }
+  leadsLoading = false;
   renderAll();
 }
 async function persist(){
@@ -778,8 +782,9 @@ function leadRowHTML(l, compact){
 }
 
 function renderPriorityTable(){
-  const top = [...leads].filter(l=>l.status!=='abgeschlossen' && l.status!=='verloren').sort((a,b)=>b.score-a.score).slice(0,5);
   const wrap = document.getElementById('priority-table-wrap');
+  if(leadsLoading){ wrap.innerHTML = loadingState(); return; }
+  const top = [...leads].filter(l=>l.status!=='abgeschlossen' && l.status!=='verloren').sort((a,b)=>b.score-a.score).slice(0,5);
   if(top.length===0){
     wrap.innerHTML = emptyState();
     return;
@@ -789,6 +794,8 @@ function renderPriorityTable(){
 }
 
 function renderLeadsTable(){
+  const wrap = document.getElementById('leads-table-wrap');
+  if(leadsLoading){ wrap.innerHTML = loadingState(); return; }
   const search = (document.getElementById('searchInput').value||'').toLowerCase();
   const cat = document.getElementById('filterCategory').value;
   const stat = document.getElementById('filterStatus').value;
@@ -812,7 +819,6 @@ function renderLeadsTable(){
     return 0;
   });
 
-  const wrap = document.getElementById('leads-table-wrap');
   if(filtered.length===0){
     wrap.innerHTML = emptyState();
     return;
@@ -839,6 +845,10 @@ function renderKanban(){
       `).join('') || '<div class="muted" style="font-size:12px; padding:6px 2px;">Keine Leads</div>'}
     </div>`;
   }).join('');
+}
+
+function loadingState(){
+  return `<div class="empty-state"><h3>Leads werden geladen …</h3><p>Daten werden synchronisiert.</p></div>`;
 }
 
 function emptyState(){
@@ -959,10 +969,12 @@ async function runAutoSearch(){
       });
       totalAdded += addedForBranch;
       logLine(`→ ${places.length} Treffer, ${addedForBranch} neue Leads hinzugefügt.`);
+      renderAll();          // sofort sichtbar, nicht erst am Ende
+      persist();             // im Hintergrund speichern/synchronisieren, nicht blockierend
     }catch(err){
       logLine(`→ Fehler bei "${query}": ${escapeHTML(err.message)}. Prüfe API-Key und Referrer-Beschränkung.`);
     }
-    await new Promise(r=>setTimeout(r, 300));
+    await new Promise(r=>setTimeout(r, 150));
   }
 
   await persist();
@@ -976,3 +988,4 @@ loadLeads();
 </script>
 </body>
 </html>
+
